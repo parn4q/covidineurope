@@ -1,0 +1,338 @@
+---
+title: "QE_2024"
+author: "Andrew Ross"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(janitor)
+library(readxl)
+library(lubridate)
+library(tidyr)
+```
+
+```{r}
+alb_demo = read_excel("D:\\QualifyExam2024\\Alberta.xlsx", sheet = 'Sheet1_Demographic')
+
+alb_wea = read_excel("D:\\QualifyExam2024\\Alberta.xlsx", sheet = 'Sheet3_Weather')
+
+alb_covid = read_excel("D:\\QualifyExam2024\\Alberta.xlsx", sheet = 'Sheet4_COVID-19 Data')
+
+alb_inter = read_excel("D:\\QualifyExam2024\\Alberta.xlsx", sheet = 'Sheet6_Intervention Policies')
+
+alb = left_join(alb_covid, alb_demo, join_by(Location == Location))
+
+alb = left_join(alb, alb_wea, join_by(Location == Location, Date == Date))
+
+alb = left_join(alb, alb_inter, join_by(Location == Location, Date == Date))
+
+
+
+```
+
+
+```{r}
+bc_demo = read.csv("D:\\QualifyExam2024\\British Columbia.xlsx")
+
+bc_demo = read_excel("D:\\QualifyExam2024\\British Columbia.xlsx", sheet = 'Sheet1_Demographic')
+
+bc_wea = read_excel("D:\\QualifyExam2024\\British Columbia.xlsx", sheet = 'Sheet3_Weather')
+
+bc_covid = read_excel("D:\\QualifyExam2024\\British Columbia.xlsx", sheet = 'Sheet4_COVID-19 Data')
+
+bc_inter = read_excel("D:\\QualifyExam2024\\British Columbia.xlsx", sheet = 'Sheet6_Intervention Policies')
+
+bc = left_join(bc_covid, bc_demo, join_by(Location == Location))
+
+bc = left_join(bc, bc_wea, join_by(Location == Location, Date == Date))
+
+bc = left_join(bc, bc_inter, join_by(Location == Location, Date == Date))
+
+```
+
+```{r}
+
+man_demo = read_excel("D:\\QualifyExam2024\\Manitoba.xlsx", sheet = 'Sheet1_Demographic')
+
+man_wea = read_excel("D:\\QualifyExam2024\\Manitoba.xlsx", sheet = 'Sheet3_Weather')
+
+man_covid = read_excel("D:\\QualifyExam2024\\Manitoba.xlsx", sheet = 'Sheet4_COVID-19 Data')
+
+man_inter = read_excel("D:\\QualifyExam2024\\Manitoba.xlsx", sheet = 'Sheet6_Intervention Policies')
+
+man = left_join(man_covid, man_demo, join_by(Location == Location))
+
+man = left_join(man, man_wea, join_by(Location == Location, Date == Date))
+
+man = left_join(man, man_inter, join_by(Location == Location, Date == Date))
+
+```
+
+```{r}
+
+ont_demo = read_excel("D:\\QualifyExam2024\\Ontario.xlsx", sheet = 'Sheet1_Demographic')
+
+ont_wea = read_excel("D:\\QualifyExam2024\\Ontario.xlsx", sheet = 'Sheet3_Weather')
+
+ont_covid = read_excel("D:\\QualifyExam2024\\Ontario.xlsx", sheet = 'Sheet4_COVID-19 Data')
+
+ont_inter = read_excel("D:\\QualifyExam2024\\Ontario.xlsx", sheet = 'Sheet6_Intervention Policies')
+
+ont = left_join(ont_covid, ont_demo, join_by(Location == Location))
+
+ont = left_join(ont, ont_wea, join_by(Location == Location, Date == Date))
+
+ont = left_join(ont, ont_inter, join_by(Location == Location, Date == Date))
+
+ont$`Daily Cases` = as.numeric(ont$`Daily Cases`)
+
+ont$`Daily Deaths` = as.numeric(ont$`Daily Deaths`)
+
+ont$`Current Hospital Admissions` = as.numeric(ont$`Current Hospital Admissions`)
+
+```
+
+```{r}
+
+que_demo = read_excel("D:\\QualifyExam2024\\Quebec.xlsx", sheet = 'Sheet1_Demographic')
+
+que_wea = read_excel("D:\\QualifyExam2024\\Quebec.xlsx", sheet = 'Sheet3_Weather')
+
+que_covid = read_excel("D:\\QualifyExam2024\\Quebec.xlsx", sheet = 'Sheet4_COVID-19 Data')
+
+que_inter = read_excel("D:\\QualifyExam2024\\Quebec.xlsx", sheet = 'Sheet6_Intervention Policies')
+
+que = left_join(que_covid, que_demo, join_by(Location == Location))
+
+que = left_join(que, que_wea, join_by(Location == Location, Date == Date))
+
+que = left_join(que, que_inter, join_by(Location == Location, Date == Date))
+
+```
+
+```{r}
+
+sas_demo = read_excel("D:\\QualifyExam2024\\Saskatchewan.xlsx", sheet = 'Sheet1_Demographic')
+
+sas_wea = read_excel("D:\\QualifyExam2024\\Saskatchewan.xlsx", sheet = 'Sheet3_Weather')
+
+sas_covid = read_excel("D:\\QualifyExam2024\\Saskatchewan.xlsx", sheet = 'Sheet4_COVID-19 Data')
+
+sas_inter = read_excel("D:\\QualifyExam2024\\Saskatchewan.xlsx", sheet = 'Sheet6_Intervention Policies')
+
+sas = left_join(sas_covid, sas_demo, join_by(Location == Location))
+
+sas = left_join(sas, sas_wea, join_by(Location == Location, Date == Date))
+
+sas = left_join(sas, sas_inter, join_by(Location == Location, Date == Date))
+
+
+```
+
+
+# Combine the datasets
+
+```{r}
+
+data = alb |> bind_rows(bc, man, ont, que, sas)
+
+data = data |> clean_names()
+```
+
+```{r}
+str(data)
+
+summary(data)
+
+```
+
+```{r}
+for(i in colnames(data |> select_if(is.numeric))){
+  print(
+    ggplot(data = data |> select_if(is.numeric), mapping = aes(x = .data[[i]])) + geom_histogram()
+  )
+}
+```
+
+
+## We have many NA values here. 
+
+```{r}
+
+data = data |> mutate(daily_cases = ifelse(daily_cases < 0, 0, daily_cases))
+
+
+data = data |> mutate(covid_case_per_pop = (daily_cases/total_population) * 100000)
+
+data = data |> mutate(covid_case_per_pop_int = ceiling((daily_cases/total_population) * 100000))
+
+
+ymddata = data |> separate(col = date, into = c('year', 'month', 'day'), sep = '-')
+
+ymddata = ymddata |> mutate(small_date = make_date(year = year, month = month))
+
+ymddata = ymddata |> filter(as.character(small_date) > '2020-02-01' & as.character(small_date) < '2021-02-01')
+
+
+ymddata = ymddata |> group_by(year, month) |> 
+  mutate(across(where(is.numeric), ~replace_na(., replace = mean(., na.rm = T))))
+
+
+data = ymddata
+ 
+
+```
+
+creating a season variable
+
+```{r}
+data = data |> mutate(season = case_when(
+  as.character(small_date) == '2020-03-01' | as.character(small_date) == '2020-04-01' | as.character(small_date) == '2020-05-01' ~ 'spring',
+  as.character(small_date) == '2020-06-01' | as.character(small_date) == '2020-07-01' | as.character(small_date) == '2020-08-01' ~ 'summer',
+  as.character(small_date) == '2020-09-01' | as.character(small_date) == '2020-10-01' | as.character(small_date) == '2020-11-01' ~ 'fall',
+  as.character(small_date) == '2020-12-01' | as.character(small_date) == '2021-01-01' | as.character(small_date) == '2021-02-01' ~ 'winter'
+  
+))
+
+
+```
+
+
+
+
+## Correlation
+
+```{r}
+cor_mat = ggcorrplot::cor_pmat(data |> select_if(is.numeric))
+
+cor_mat = as.data.frame(cor_mat)
+
+
+```
+
+
+## Data 1.  Using an anova model to see which locations are statistically different.
+
+```{r fig.height=10, fig.width=10}
+
+meandc = data |> select(location, covid_case_per_pop, season) |> group_by(location, season) |> 
+  summarise(Mean = mean(covid_case_per_pop))
+
+ggplot(data = meandc, mapping = aes(x = season, y = Mean, color = as.factor(location))) + geom_point() + 
+  geom_line(aes(group = location)) + 
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+
+```{r}
+
+mod = aov(covid_case_per_pop ~ as.factor(location) * as.factor(season), data = data)
+
+summary(mod)
+
+hist(residuals(mod))
+
+qqnorm(residuals(mod))
+
+DescTools::PostHocTest(mod, method = 'hsd', conf.level = (1-(0.05/200)))
+
+
+```
+
+comparing the same model but with transformations
+
+```{r}
+
+mod2 = aov(sqrt(covid_case_per_pop) ~ as.factor(location) * as.factor(season), data = data)
+
+mod3 = aov(log(covid_case_per_pop + 1) ~ as.factor(location) * as.factor(season), data = data)
+
+```
+
+```{r}
+
+mean((data$covid_case_per_pop - predict(mod))^2)
+
+mean((data$covid_case_per_pop - predict(mod2)^2)^2)
+
+mean((data$covid_case_per_pop - exp(predict(mod3)))^2)
+
+
+
+
+```
+
+## Data 2 model
+
+
+```{r}
+
+for(i in colnames(data |> select_if(is.numeric))){
+  
+  print(
+    ggplot(data = data |> select_if(is.numeric), mapping = aes(x = .data[[i]], y = covid_case_per_pop)) + geom_point()
+    
+  )
+}
+
+
+```
+
+seeing covid cases per pop and current icu weird values
+
+```{r}
+
+check = data |> filter(current_icu_admissions > 30 & current_icu_admissions <= 50 & covid_case_per_pop > 50)
+
+check = data |> filter(daily_deaths > 3000)
+
+
+```
+
+
+
+```{r}
+
+gam.mod = glm(sqrt(covid_case_per_pop + 1) ~ current_icu_admissions * as.factor(season) + 
+                as.factor(season) * current_hospital_admissions  + percent_smoking +
+                mean_temp_c * as.factor(season) + as.factor(location), 
+              data = data, family = Gamma(link = 'identity'))
+
+summary(gam.mod)
+
+
+mean((data$covid_case_per_pop - predict(gam.mod))^2)
+
+mean((data$covid_case_per_pop - predict(gammm.mod))^2)
+
+
+
+```
+
+
+## Model 3
+
+```{r}
+
+data$location = as.factor(data$location)
+
+gammm.mod = lme4::glmer(sqrt(covid_case_per_pop + 1) ~ current_icu_admissions * as.factor(season) + 
+                as.factor(season) * current_hospital_admissions  + percent_smoking +
+                mean_temp_c * as.factor(season)+ (1|location), 
+              data = data, family = Gamma(link = 'identity'))
+
+summary(gammm.mod)
+
+AIC(gam.mod, gammm.mod)
+
+
+```
+
+
+
+
+
